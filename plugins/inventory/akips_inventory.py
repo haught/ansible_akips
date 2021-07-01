@@ -156,7 +156,6 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         if not grouplines:
             if self.cache_key not in self._cache:
                 self._cache[self.cache_key] = {groupurl: ''}
-            self.display.vvv('Getting ' + groupurl)
             groupresponse = session.get(
                 groupurl,
                 proxies={'http': self.get_option('proxy'), 'https': self.get_option('proxy')})
@@ -176,7 +175,6 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         if not groupsuperlines:
             if self.cache_key not in self._cache:
                 self._cache[self.cache_key] = {groupsuperurl: ''}
-            self.display.vvv('Getting ' + groupsuperurl)
             groupsuperresponse = session.get(
                 groupsuperurl,
                 proxies={'http': self.get_option('proxy'), 'https': self.get_option('proxy')})
@@ -200,7 +198,6 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         if not lines:
             if self.cache_key not in self._cache:
                 self._cache[self.cache_key] = {url: ''}
-            self.display.vvv('Getting ' + url)
             response = session.get(
                 url,
                 proxies={'http': self.get_option('proxy'), 'https': self.get_option('proxy')})
