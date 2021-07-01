@@ -120,9 +120,6 @@ try:
 except ImportError:
     HAS_REQUESTS = False
 
-import json
-import yaml
-
 from ansible.errors import AnsibleError, AnsibleParserError
 from ansible.plugins.inventory import BaseInventoryPlugin, Constructable, Cacheable, to_safe_group_name
 
