@@ -40,10 +40,11 @@ PRs are always welcome.
 
 Developing is a bit of a pain. First create the hierarchy some of the ansible apps expect. Create directories *ansible_collections/haught/akips* and clone the repo directly into the akips directory.
 
-Next you can symlink the *haught* directory to your default ansible collections folder, for example:
+Next you can symlink the *akips* directory to your default ansible collections folder with a haught subdirectory, for example:
 
 ```bash
-ln -s ~/devel/ansible_collections/haught ~/.ansible/collections/ansible_collections/
+mkdir ~/.ansible/collections/ansible_collections/haught
+ln -s ~/devel/ansible_collections/haught/akips ~/.ansible/collections/ansible_collections/haught/
 ```
 
 Sanity tests:
