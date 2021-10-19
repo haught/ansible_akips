@@ -37,7 +37,7 @@ DOCUMENTATION = r'''
             description:
             - Name of user for connection to Akips.
             - If the value is not specified, the value of environment variable C(AKIPS_USERNAME) will be used instead.
-            required: false
+            required: true
             type: str
             env:
                 - name: AKIPS_USERNAME
@@ -140,8 +140,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
     def groups(self):
         session = requests.Session()
 
-        groupurl = '{host}/api-db?password={password};cmds=list+device+group'
-        groupurl = groupurl.format(host=self.get_option('host'), password=self.get_option('password'))
+        groupurl = '{host}/api-db?username={username}&password={password};cmds=list+device+group'
+        groupurl = groupurl.format(host=self.get_option('host'), username=self.get_option('username'), password=self.get_option('password'))
         grouplines = []
 
         if not self.update_cache:
@@ -159,8 +159,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             grouplines = groupresponse.text.splitlines()
             self._cache[self.cache_key] = {groupurl: grouplines}
 
-        groupsuperurl = '{host}/api-db?password={password};cmds=list+device+super+group'
-        groupsuperurl = groupsuperurl.format(host=self.get_option('host'), password=self.get_option('password'))
+        groupsuperurl = '{host}/api-db?username={username}&password={password};cmds=list+device+super+group'
+        groupsuperurl = groupsuperurl.format(host=self.get_option('host'), username=self.get_option('username'), password=self.get_option('password'))
         groupsuperlines = []
 
         if not self.update_cache:
@@ -182,8 +182,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
 
     def hostsInGroup(self, group):
         session = requests.Session()
-        url = '{host}/api-db?password={password};cmds=mget+*+*+ping4+PING.icmpState+value+/up/+any+group+{group}'
-        url = url.format(host=self.get_option('host'), password=self.get_option('password'), group=group)
+        url = '{host}/api-db?username={username}&password={password};cmds=mget+*+*+ping4+PING.icmpState+value+/up/+any+group+{group}'
+        url = url.format(host=self.get_option('host'), username=self.get_option('username'), password=self.get_option('password'), group=group)
         lines = []
 
         if not self.update_cache:
