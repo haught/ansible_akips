@@ -233,7 +233,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         for group in groups:
             # groups to ignore
             if self.get_option('exclude_groups') and (group == '' or re.search(self.get_option('exclude_groups'), group)):
-                self.display.vvv('Excluding group ' + group)
+                self.display.vv('Excluding group {group} using AKIPS_EXCLUDE_GROUPS'.format(group=group))
                 continue
 
             group_name = self.inventory.add_group(group)
@@ -246,13 +246,17 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 host = line.split(' ')[0]
                 ip = line.split(',')[-1]
 
+                if host in groups:
+                    self.display.warning('Host has same name as a group, cannot add {host}'.format(host=host))
+                    continue
+
                 # hosts to ignore
                 if self.get_option('exclude_hosts') and (host == '' or re.search(self.get_option('exclude_hosts'), host)):
-                    self.display.vvv('Excluding host ' + host + ' using name')
+                    self.display.vv('Excluding host {host} using AKIPS_EXCLUDE_HOSTS'.format(host=host))
                     continue
                 # ips to ignore
                 if self.get_option('exclude_networks') and (ip == '' or re.search(self.get_option('exclude_networks'), ip)):
-                    self.display.vvv('Excluding host ' + host + ' using ip')
+                    self.display.vv('Excluding host {host} using AKIPS_EXCLUDE_NETWORKS'.format(host=host))
                     continue
 
                 self.inventory.add_host(host)
