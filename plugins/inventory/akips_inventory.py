@@ -51,8 +51,13 @@ DOCUMENTATION = r'''
                 - name: AKIPS_PASSWORD
         group_hostvars:
             description:
-            - Add additional hostvars to a host device
+            - Add additional hostvars to a group of host devices
             - Contains a list of Regexes to match against the host's group and a dictionary of hostvars
+            type: dict
+        host_hostvars:
+            description:
+            - Add additional hostvars to a host device
+            - Contains a list of Regexes to match against the host's name and a dictionary of hostvars
             type: dict
         exclude_groups:
             description:
@@ -81,13 +86,13 @@ DOCUMENTATION = r'''
 EXAMPLES = r'''
 # Simple Inventory Plugin example
 plugin: haught.akips.akips_inventory
-host: akips.example.com
+host: https://akips.example.com
 username: api-ro
 password: password
 
 # Inventory Plugin example with extra hostvars
 plugin: haught.akips.akips_inventory
-host: akips.example.com
+host: https://akips.example.com
 username: api-ro
 password: password
 group_hostvars:
@@ -97,10 +102,14 @@ group_hostvars:
     NX-OS:
         ansible_network_os: nxos
         ansible_connection: network_cli
+host_hostvars:
+    3650:
+        ansible_network_os: ios
+        ansible_connection: network_cli
 
 # Inventory Plugin example with excludes defined
 plugin: haught.akips.akips_inventory
-host: akips.example.com
+host: https://akips.example.com
 username: api-ro
 password: password
 exclude_groups: ^Linux$|maintenance_mode
@@ -209,6 +218,13 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 for key, value in group_hostvars[regex].items():
                     self.inventory.set_variable(host, key, value)
 
+    def addHostHostVars(self, host):
+        host_hostvars = self.get_option('host_hostvars') or {}
+        for regex in host_hostvars:
+            if re.search(regex, host, re.IGNORECASE):
+                for key, value in host_hostvars[regex].items():
+                    self.inventory.set_variable(host, key, value)
+
     def parse(self, inventory, loader, path, cache=True):
         super(InventoryModule, self).parse(inventory, loader, path)
 
@@ -263,3 +279,4 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 self.inventory.add_child(group_name, host)
                 self.inventory.set_variable(host, 'ansible_host', ip)
                 self.addGroupHostVars(host, group)
+                self.addHostHostVars(host)
