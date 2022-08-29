@@ -1,23 +1,31 @@
-
+# Copyright (c) 2018 Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 DOCUMENTATION = r'''
-    name: haught.akips.akips_inventory
-    plugin_type: inventory
+    name: akips_inventory
     author:
         - Matt Haught (@haught)
-    short_description: Akips Inventory Plugin
-    version_added: "2.10"
+
+    short_description: Akips inventory source.
+
     description:
-        - Akips Inventory plugin.
+        - Bring in Akips groups and devices. Without options it will bring in everything.
+        - Using restrict and exclude, you can limit what is pulled in.
+        - Host variables can be added by the group or individually for a host.
+        - Group variables are overwritten by matching individual host variabless.
+        - Uses *_akips.(yml|yaml) YAML configuration file to set parameter values.
+
     extends_documentation_fragment:
         - constructed
         - inventory_cache
+
     requirements:
         - python requests (requests)
         - netaddr
+
     options:
         plugin:
             description: The name of the Akips Inventory Plugin, this should always be 'haught.akips.akips_inventory'.
@@ -59,9 +67,16 @@ DOCUMENTATION = r'''
             - Add additional hostvars to a host device
             - Contains a list of Regexes to match against the host's name and a dictionary of hostvars
             type: dict
+        restrict_groups:
+            description:
+            - A regex to match aginst Akips group names to only include
+            - Only hosts in matching groups will be in the inventory
+            type: str
+            env:
+                - name: AKIPS_RESTRICT_GROUPS
         exclude_groups:
             description:
-            - A regex to match aginst retreived group names to excude
+            - A regex to match aginst Akips group names to excude
             type: str
             env:
                 - name: AKIPS_EXCLUDE_GROUPS
@@ -78,7 +93,8 @@ DOCUMENTATION = r'''
             env:
                 - name: AKIPS_EXCLUDE_NETWORKS
         proxy:
-            description: Proxy server to use for requests to Akips.
+            description:
+            - Proxy server to use for requests to Akips.
             type: string
             default: ''
 '''
@@ -88,33 +104,40 @@ EXAMPLES = r'''
 plugin: haught.akips.akips_inventory
 host: https://akips.example.com
 username: api-ro
-password: password
+password: xxxxxxxxxxx
 
 # Inventory Plugin example with extra hostvars
 plugin: haught.akips.akips_inventory
 host: https://akips.example.com
 username: api-ro
-password: password
+password: xxxxxxxxxxx
 group_hostvars:
     IOS:
-        ansible_network_os: ios
-        ansible_connection: network_cli
+        ansible_network_os: cisco.ios.ios
+        ansible_connection: ansible.netcommon.network_cli
     NX-OS:
-        ansible_network_os: nxos
-        ansible_connection: network_cli
+        ansible_network_os: cisco.nxos.nxos
+        ansible_connection: ansible.netcommon.network_cli
 host_hostvars:
     3650:
-        ansible_network_os: ios
-        ansible_connection: network_cli
+        ansible_network_os: cisco.ios.ios
+        ansible_connection: ansible.netcommon.network_cli
 
 # Inventory Plugin example with excludes defined
 plugin: haught.akips.akips_inventory
 host: https://akips.example.com
 username: api-ro
-password: password
+password: xxxxxxxxxxx
 exclude_groups: ^Linux$|maintenance_mode
 exclude_hosts: testing
 exclude_networks: 10\.11\.12\.
+
+# Inventory Plugin example with restrict_groups
+plugin: haught.akips.akips_inventory
+host: https://akips.example.com
+username: api-ro
+password: xxxxxxxxxxx
+restrict_groups: Cisco|Juniper
 '''
 
 try:
@@ -138,6 +161,7 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
     NAME = 'haught.akips.akips_inventory'
 
     def verify_file(self, path):
+        ''' Check if inventory file is name correctly '''
         valid = False
         if super(InventoryModule, self).verify_file(path):
             if path.endswith(('akips.yaml', 'akips.yml')):
@@ -146,86 +170,136 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 self.display.vvv('Skipping due to inventory source not ending in "akips.yaml" nor "akips.yml"')
         return valid
 
-    def groups(self):
+    def _get_all_groups(self):
+        ''' Get all Akips groups '''
         session = requests.Session()
 
         groupurl = '{host}/api-db?username={username}&password={password};cmds=list+device+group'
         groupurl = groupurl.format(host=self.get_option('host'), username=self.get_option('username'), password=self.get_option('password'))
-        grouplines = []
 
-        if not self.update_cache:
-            try:
-                grouplines = self._cache[self.cache_key][groupurl]
-            except KeyError:
-                pass
-
-        if not grouplines:
-            if self.cache_key not in self._cache:
-                self._cache[self.cache_key] = {groupurl: ''}
-            groupresponse = session.get(
-                groupurl,
-                proxies={'http': self.get_option('proxy'), 'https': self.get_option('proxy')})
-            grouplines = groupresponse.text.splitlines()
-            self._cache[self.cache_key] = {groupurl: grouplines}
+        groupresponse = session.get(
+            groupurl,
+            proxies={'http': self.get_option('proxy'), 'https': self.get_option('proxy')})
+        grouplines = groupresponse.text.splitlines()
 
         groupsuperurl = '{host}/api-db?username={username}&password={password};cmds=list+device+super+group'
         groupsuperurl = groupsuperurl.format(host=self.get_option('host'), username=self.get_option('username'), password=self.get_option('password'))
-        groupsuperlines = []
 
-        if not self.update_cache:
-            try:
-                groupsuperlines = self._cache[self.cache_key][groupsuperurl]
-            except KeyError:
-                pass
+        groupsuperresponse = session.get(
+            groupsuperurl,
+            proxies={'http': self.get_option('proxy'), 'https': self.get_option('proxy')})
+        groupsuperlines = groupsuperresponse.text.splitlines()
 
-        if not groupsuperlines:
-            if self.cache_key not in self._cache:
-                self._cache[self.cache_key] = {groupsuperurl: ''}
-            groupsuperresponse = session.get(
-                groupsuperurl,
-                proxies={'http': self.get_option('proxy'), 'https': self.get_option('proxy')})
-            groupsuperlines = groupsuperresponse.text.splitlines()
-            self._cache[self.cache_key] = {groupsuperurl: groupsuperlines}
         groups = grouplines + groupsuperlines
         return groups
 
-    def hostsInGroup(self, group):
+    def _get_hosts_in_group(self, group):
+        ''' Lookup hosts in an Akips group '''
         session = requests.Session()
         url = '{host}/api-db?username={username}&password={password};cmds=mget+*+*+ping4+PING.icmpState+value+/up/+any+group+{group}'
         url = url.format(host=self.get_option('host'), username=self.get_option('username'), password=self.get_option('password'), group=group)
-        lines = []
 
-        if not self.update_cache:
-            try:
-                lines = self._cache[self.cache_key][url]
-            except KeyError:
-                pass
+        response = session.get(
+            url,
+            proxies={'http': self.get_option('proxy'), 'https': self.get_option('proxy')})
+        lines = response.text.splitlines()
 
-        if not lines:
-            if self.cache_key not in self._cache:
-                self._cache[self.cache_key] = {url: ''}
-            response = session.get(
-                url,
-                proxies={'http': self.get_option('proxy'), 'https': self.get_option('proxy')})
-            lines = response.text.splitlines()
-            self._cache[self.cache_key] = {url: lines}
         return lines
 
-    def addGroupHostVars(self, host, group):
+    def _get_group_hostvars(self, group):
+        ''' Return group specific host variables '''
+        hostvars = {}
         group_hostvars = self.get_option('group_hostvars') or {}
         for regex in group_hostvars:
             if re.search(regex, group, re.IGNORECASE):
                 for key, value in group_hostvars[regex].items():
-                    self.inventory.set_variable(host, key, value)
+                    hostvars[key] = value
+        return hostvars
 
-    def addHostHostVars(self, host):
+    def _get_host_hostvars(self, host):
+        ''' Return host specific host variables '''
+        hostvars = {}
         host_hostvars = self.get_option('host_hostvars') or {}
         for regex in host_hostvars:
             if re.search(regex, host, re.IGNORECASE):
                 for key, value in host_hostvars[regex].items():
-                    self.inventory.set_variable(host, key, value)
+                    hostvars[key] = value
+        return hostvars
+
+    def _get_inventory(self):
+        ''' Return hosts and their attributes '''
+        output = {}
+        groups = self._get_all_groups()
+
+        if self.get_option('restrict_groups'):
+            restrict_groups_re = re.compile(self.get_option('restrict_groups'))
+
+        if self.get_option('exclude_hosts'):
+            exclude_hosts_re = re.compile(self.get_option('exclude_hosts'))
+
+        if self.get_option('exclude_networks'):
+            exclude_networks_re = re.compile(self.get_option('exclude_networks'))
+
+        for group in groups:
+            # groups to ignore
+            if self.get_option('exclude_groups') and (group == '' or re.search(self.get_option('exclude_groups'), group)):
+                self.display.vv('Excluding group {group} using AKIPS_EXCLUDE_GROUPS'.format(group=group))
+                continue
+
+            hosts = self._get_hosts_in_group(group)
+
+            for line in hosts:
+                if line == '':
+                    continue
+                host = line.split(' ')[0]
+                ip = line.split(',')[-1]
+
+                if host == '':
+                    self.display.vv('Ignoring empty host')
+                    continue
+
+                if ip == '':
+                    self.display.vv('Ignoring host {host} with empty IP address'.format(host=host))
+                    continue
+
+                if host in groups:
+                    self.display.warning('Host has same name as a group, cannot add {host}'.format(host=host))
+                    continue
+
+                # exclude hosts
+                if self.get_option('exclude_hosts') and (exclude_hosts_re.search(host)):
+                    self.display.vv('Excluding host {host} using AKIPS_EXCLUDE_HOSTS'.format(host=host))
+                    continue
+
+                # exclude networks
+                if self.get_option('exclude_networks') and (exclude_networks_re.search(ip)):
+                    self.display.vv('Excluding host {host} using AKIPS_EXCLUDE_NETWORKS'.format(host=host))
+                    continue
+
+                if host not in output:
+                    output[host] = {'groups': [], 'hostvars': {'ansible_host': ip}}
+
+                if group not in output[host]['groups']:
+                    output[host]['groups'].append(group)
+
+                output[host]['hostvars'].update(self._get_group_hostvars(group))
+
+        # host hostvars should take precedence over group hostvars
+        for host in output:
+            output[host]['hostvars'].update(self._get_host_hostvars(host))
+
+        # remove any hosts not in restrict_groups
+        if self.get_option('restrict_groups'):
+            restricted_output = {}
+            for host, values in output.items():
+                if list(filter(restrict_groups_re.search, values['groups'])):
+                    restricted_output[host] = output[host]
+            return restricted_output
+
+        return output
 
     def parse(self, inventory, loader, path, cache=True):
+        ''' Add Akips inventory to ansible inventory '''
         super(InventoryModule, self).parse(inventory, loader, path)
 
         if not HAS_REQUESTS:
@@ -239,44 +313,29 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
                 ' for Akips dynamic inventory plugin.')
 
         self._read_config_data(path)
+
         self.cache_key = self.get_cache_key(path)
 
         self.use_cache = self.get_option('cache') and cache
         self.update_cache = self.get_option('cache') and not cache
+        akips_inventory = None
 
-        groups = self.groups()
+        if self.use_cache:
+            try:
+                akips_inventory = self._cache[self.cache_key]
+            except KeyError:
+                self.update_cache = True
 
-        for group in groups:
-            # groups to ignore
-            if self.get_option('exclude_groups') and (group == '' or re.search(self.get_option('exclude_groups'), group)):
-                self.display.vv('Excluding group {group} using AKIPS_EXCLUDE_GROUPS'.format(group=group))
-                continue
+        if not akips_inventory:
+            akips_inventory = self._get_inventory()
 
-            group_name = self.inventory.add_group(group)
+        if self.update_cache:
+            self._cache[self.cache_key] = akips_inventory
 
-            hosts = self.hostsInGroup(group)
-
-            for line in hosts:
-                if line == '':
-                    continue
-                host = line.split(' ')[0]
-                ip = line.split(',')[-1]
-
-                if host in groups:
-                    self.display.warning('Host has same name as a group, cannot add {host}'.format(host=host))
-                    continue
-
-                # hosts to ignore
-                if self.get_option('exclude_hosts') and (host == '' or re.search(self.get_option('exclude_hosts'), host)):
-                    self.display.vv('Excluding host {host} using AKIPS_EXCLUDE_HOSTS'.format(host=host))
-                    continue
-                # ips to ignore
-                if self.get_option('exclude_networks') and (ip == '' or re.search(self.get_option('exclude_networks'), ip)):
-                    self.display.vv('Excluding host {host} using AKIPS_EXCLUDE_NETWORKS'.format(host=host))
-                    continue
-
-                self.inventory.add_host(host)
-                self.inventory.add_child(group_name, host)
-                self.inventory.set_variable(host, 'ansible_host', ip)
-                self.addGroupHostVars(host, group)
-                self.addHostHostVars(host)
+        for host, attributes in akips_inventory.items():
+            self.inventory.add_host(host)
+            for group in attributes['groups']:
+                self.inventory.add_group(group)
+                self.inventory.add_child(group, host)
+            for key, value in attributes['hostvars'].items():
+                self.inventory.set_variable(host, key, value)
