@@ -21,10 +21,45 @@ username: api-ro
 password: xxxxxxxx
 ```
 
+You can limit what goes into the inventory using *restrict_groups*, *exclude_groups*, *exclude_hosts*, and *exclude_networks*. These all work using regexs. Here is an example using a few of them.
+
+```yaml
+---
+plugin: haught.akips.akips_inventory
+host: https://akips.example.com
+username: api-ro
+password: xxxxxxxx
+restrict_groups: 'Cisco-IOS|Cisco-NXOS'
+exclude_groups: '^Old-Campus|^Lab'
+exclude_hosts: 'bld1.*'
+```
+
+Host variables can be added using *group_hostvars* and *host_hostvars*.
+
+```yaml
+---
+plugin: haught.akips.akips_inventory
+host: https://akips.example.com
+username: api-ro
+password: xxxxxxxx
+restrict_groups: '^Cisco-IOS|^Cisco-NXOS'
+exclude_groups: '^Old-Campus|^Lab'
+exclude_hosts: 'bld1.*'
+group_hostvars:
+    IOS:
+        ansible_network_os: cisco.ios.ios
+        ansible_connection: ansible.netcommon.network_cli
+    NX-OS:
+        ansible_network_os: cisco.nxos.nxos
+        ansible_connection: ansible.netcommon.network_cli
+host_hostvars:
+    3650:
+        foo: bar
+```
 
 
 
-See [akips_inventory.py](https://github.com/haught/ansible_akips/plugins/inventory/akips_inventory.py) for additional details and options on how to exclude groups and hosts and add additional host variables.
+See [akips_inventory.py](https://github.com/haught/ansible_akips/blob/main/plugins/inventory/akips_inventory.py) for additional details and options on how to exclude groups and hosts and add additional host variables.
 
 You can test retreiving hosts using *ansible-inventory*.
 ```bash
