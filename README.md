@@ -18,10 +18,13 @@ You will need to create a inventory file that **ends** in *akips.yaml* or *akips
 plugin: haught.akips.akips_inventory
 host: https://akips.example.com
 username: api-ro
-password: secret
+password: xxxxxxxx
 ```
 
-See [akips_inventory.py](plugins/inventory/akips_inventory.py) or details and options on how to exclude groups and hosts and add additional host variables.
+
+
+
+See [akips_inventory.py](https://github.com/haught/ansible_akips/plugins/inventory/akips_inventory.py) for additional details and options on how to exclude groups and hosts and add additional host variables.
 
 You can test retreiving hosts using *ansible-inventory*.
 ```bash
