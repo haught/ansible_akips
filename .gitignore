@@ -7,3 +7,4 @@ __pycache__
 .venv
 *.tar.gz
 tests/output
+inventory_akips.yml
