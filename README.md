@@ -21,7 +21,19 @@ username: api-ro
 password: xxxxxxxx
 ```
 
-You can limit what goes into the inventory using *restrict_groups*, *exclude_groups*, *exclude_hosts*, and *exclude_networks*. These all work using regexs. Here is an example using a few of them.
+## Options
+
+|   |   |
+|---|---|
+| restrict_groups | Limit groups to **only** hosts in these groups|
+| ignore_groups | Skip looking at these groups for hosts|
+| exclude_groups | Any host in these groups will be excluded|
+| exclude_hosts | Any host matching will be excluded|
+| exclude_networks | Any host with matching IP will be excluded|
+| group_hostvars | Add host hostvars based on matching group|
+| host_hostvars | Add host hostvars to matching host|
+
+You can limit what goes into the inventory using *restrict_groups*, *ignore_groups*, *exclude_groups*, *exclude_hosts*, and *exclude_networks*. These all work using regexs. Here is an example using a few of them.
 
 ```yaml
 ---
@@ -57,9 +69,9 @@ host_hostvars:
         foo: bar
 ```
 
-
-
 See [akips_inventory.py](https://github.com/haught/ansible_akips/blob/main/plugins/inventory/akips_inventory.py) for additional details and options on how to exclude groups and hosts and add additional host variables.
+
+## Usage
 
 You can test retreiving hosts using *ansible-inventory*.
 ```bash
@@ -76,16 +88,7 @@ ansible-playbook -i inventory_akips.yaml -l myswitch test_playbook.yaml
 
 PRs are always welcome.
 
-Developing is a bit of a pain. First create the hierarchy some of the ansible apps expect. Create directories *ansible_collections/haught/akips* and clone the repo directly into the akips directory.
-
-Next you can symlink the *akips* directory to your default ansible collections folder with a haught subdirectory, for example:
-
-```bash
-mkdir ~/.ansible/collections/ansible_collections/haught
-ln -s ~/devel/ansible_collections/haught/akips ~/.ansible/collections/ansible_collections/haught/
-```
-
 Sanity tests:
 ```bash
-ansible-test sanity --docker --python 3.6 plugins/inventory/akips_inventory.py
+ansible-test sanity --docker --python 3.9 plugins/inventory/akips_inventory.py
 ```
