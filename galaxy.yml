@@ -8,7 +8,7 @@ namespace: haught
 name: akips
 
 # The version of the collection. Must be compatible with semantic versioning
-version: 2.0.1
+version: 3.0.0
 
 # The path to the Markdown (.md) readme file. This path is relative to the root of the collection
 readme: README.md
@@ -58,5 +58,5 @@ issues: https://github.com/haught/ansible_akips
 # artifact. A pattern is matched from the relative path of the file or directory of the collection directory. This
 # uses 'fnmatch' to match the files or directories. Some directories and files like 'galaxy.yml', '*.pyc', '*.retry',
 # and '.git' are always filtered
-build_ignore: ['.venv', '.vscode', '*.code-workspace', '*.tar.gz', 'tests/output/*', 'inventory_akips.yml']
+build_ignore: ['.venv', '.vscode', '.gitignore', '*.code-workspace', '*.tar.gz', 'tests/output/*', 'inventory_akips.yml']
 
