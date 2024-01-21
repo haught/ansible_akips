@@ -74,6 +74,14 @@ DOCUMENTATION = r'''
             type: str
             env:
                 - name: AKIPS_RESTRICT_GROUPS
+        limit_groups:
+            description:
+            - A regex to match aginst Akips group names to include
+            - Only hosts in matching groups will be in the inventory and
+            - hosts will bring along other groups they belong to
+            type: str
+            env:
+                - name: AKIPS_LIMIT_GROUPS
         ignore_groups:
             description:
             - A regex to match aginst Akips group names to ignore
@@ -254,6 +262,8 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
 
         if self.get_option('restrict_groups'):
             restrict_groups_re = re.compile(self.get_option('restrict_groups'))
+        if self.get_option('limit_groups'):
+            limit_groups_re = re.compile(self.get_option('limit_groups'))
         if self.get_option('ignore_groups'):
             ignore_groups_re = re.compile(self.get_option('ignore_groups'))
         if self.get_option('exclude_groups'):
@@ -267,19 +277,14 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
             if group == '':
                 continue
 
-            # ignore groups if not in restrict groups
+            # skip groups if not in restrict groups
             if self.get_option('restrict_groups') and not (re.search(restrict_groups_re, group)):
-                self.display.vv('Ignoring group {group} no in AKIPS_RESTRICT_GROUPS'.format(group=group))
+                self.display.vv('Skipping group {group} not in AKIPS_RESTRICT_GROUPS'.format(group=group))
                 continue
 
             # groups to ignore
             if self.get_option('ignore_groups') and (re.search(ignore_groups_re, group)):
                 self.display.vv('Ignoring group {group} using AKIPS_IGNORE_GROUPS'.format(group=group))
-                continue
-
-            # groups to also ignore if excluded
-            if self.get_option('exclude_groups') and (re.search(exclude_groups_re, group)):
-                self.display.vv('Ignoring excluded group {group} using AKIPS_EXCLUDE_GROUPS'.format(group=group))
                 continue
 
             hosts = self._get_hosts_in_group(group)
@@ -311,14 +316,26 @@ class InventoryModule(BaseInventoryPlugin, Constructable, Cacheable):
         for host in output:
             output[host]['hostvars'].update(self._get_host_hostvars(host))
 
-        # remove any hosts in exclude_groups group
-        for group in groups:
-            if self.get_option('exclude_groups') and (re.search(self.get_option('exclude_groups'), group)):
-                hosts = self._get_hosts_in_group(group)
-                for host in hosts:
-                    self.display.vv('Excluding host {hostname} using AKIPS_EXCLUDE_GROUPS'.format(hostname=host['name']))
-                    if host['name'] in output:
-                        del output[host['name']]
+        # limit hosts to those in limit_groups
+        if self.get_option('limit_groups'):
+            lgOutput = {}
+            for host in output:
+                if any((limit_groups_re.match(item)) for item in output[host]['groups']):
+                    lgOutput[host] = output[host]
+                else:
+                    self.display.vv('Removing host {hostname} not matching AKIPS_LIMIT_GROUPS'.format(hostname=host))
+            output = lgOutput
+
+        # remove any hosts in exclude_groups
+        if self.get_option('exclude_groups'):
+            egOutput = {}
+            for host in output:
+                if not any((exclude_groups_re.match(item)) for item in output[host]['groups']):
+                    egOutput[host] = output[host]
+                else:
+                    self.display.vv('Removing host {hostname} matching AKIPS_EXCLUDE_GROUPS'.format(hostname=host))
+            output = egOutput
+
         return output
 
     def parse(self, inventory, loader, path, cache=True):

@@ -25,7 +25,8 @@ password: xxxxxxxx
 
 |   |   |
 |---|---|
-| restrict_groups | Limit groups to **only** hosts in these groups|
+| restrict_groups | Restrict groups to **only** matching groups|
+| limit_groups | Limit to hosts to those belonging to these groups |
 | ignore_groups | Skip looking at these groups for hosts|
 | exclude_groups | Any host in these groups will be excluded|
 | exclude_hosts | Any host matching will be excluded|
@@ -33,7 +34,7 @@ password: xxxxxxxx
 | group_hostvars | Add host hostvars based on matching group|
 | host_hostvars | Add host hostvars to matching host|
 
-You can limit what goes into the inventory using *restrict_groups*, *ignore_groups*, *exclude_groups*, *exclude_hosts*, and *exclude_networks*. These all work using regexs. Here is an example using a few of them.
+You can limit what goes into the inventory using *restrict_groups*, *limit_groups*, *ignore_groups*, *exclude_groups*, *exclude_hosts*, and *exclude_networks*. These all work using regexs. Here is an example using a few of them.
 
 ```yaml
 ---
@@ -41,7 +42,7 @@ plugin: haught.akips.akips_inventory
 host: https://akips.example.com
 username: api-ro
 password: xxxxxxxx
-restrict_groups: 'Cisco-IOS|Cisco-NXOS'
+limit_groups: 'Cisco-IOS|Cisco-NXOS'
 exclude_groups: '^Old-Campus|^Lab'
 exclude_hosts: 'bld1.*'
 ```
@@ -54,7 +55,7 @@ plugin: haught.akips.akips_inventory
 host: https://akips.example.com
 username: api-ro
 password: xxxxxxxx
-restrict_groups: '^Cisco-IOS|^Cisco-NXOS'
+limit_groups: '^Cisco-IOS|^Cisco-NXOS'
 exclude_groups: '^Old-Campus|^Lab'
 exclude_hosts: 'bld1.*'
 group_hostvars:
